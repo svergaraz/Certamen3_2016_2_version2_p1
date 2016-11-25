@@ -1,8 +1,10 @@
 package cl.telematica.android.certamen3v2;
 
 import android.app.Dialog;
+import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
+import android.database.sqlite.SQLiteOpenHelper;
 import android.os.Handler;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
@@ -18,10 +20,11 @@ import cl.telematica.android.certamen3v2.adapters.GridAdapter;
 import cl.telematica.android.certamen3v2.interfaces.CardSelectedListener;
 import cl.telematica.android.certamen3v2.interfaces.DialogListener;
 import cl.telematica.android.certamen3v2.models.CardModel;
+import cl.telematica.android.certamen3v2.presenter.MemorizePresenterImpl;
 import cl.telematica.android.certamen3v2.utils.MessageFactory;
 import cl.telematica.android.certamen3v2.utils.Utils;
 
-public class MemorizeActivity extends AppCompatActivity implements CardSelectedListener {
+public class MemorizeActivity extends AppCompatActivity implements MemorizeView, CardSelectedListener {
 
     private GridView gridView;
     private TextView scoreText;
@@ -32,6 +35,9 @@ public class MemorizeActivity extends AppCompatActivity implements CardSelectedL
     private int score = 0;
     private CardModel lastCard;
     private GridAdapter adapter;
+    private MemorizePresenterImpl mPresenter;
+
+
 
     private static final String KEY_COUNTER = "Memorize::Counter";
     private static final String KEY_LAST_POSITION = "Memorize::LastPosition";
@@ -58,10 +64,17 @@ public class MemorizeActivity extends AppCompatActivity implements CardSelectedL
             }
         }
 
+        if (mPresenter == null){
+            Context c = getApplicationContext();
+            mPresenter = new MemorizePresenterImpl(this, c, this, this);
+            mPresenter.createVariables();
+            mPresenter.setGridData();
 
-        createVariables();
 
-        setGridData();
+        }
+
+
+
     }
 
     @Override
@@ -78,37 +91,31 @@ public class MemorizeActivity extends AppCompatActivity implements CardSelectedL
                 /**
                  * Call to the ranking
                  */
-                /*Intent intent = new Intent(MemorizeActivity.this, RankingActivity.class);
-                startActivity(intent);*/
+                Intent intent = new Intent(MemorizeActivity.this, RankingActivity.class);
+                startActivity(intent);
                 return true;
             default:
                 return super.onOptionsItemSelected(item);
         }
     }
 
-    private void createVariables(){
-        gridView = (GridView) findViewById(R.id.cardsGrid);
-        scoreText = (TextView) findViewById(R.id.scoreText);
+    @Override
+    public void updateVariables(GridView grid, TextView txt){
+        gridView = grid;
+        scoreText = txt;
     }
 
-    private void setGridData(){
-        counter = 0;
-        lastPosition = 0;
-        pairsCounter = 0;
-        score = 0;
+    @Override
+    public void updateGrid(int counter, int lastposition, int pairs, int score, List<CardModel> cards, GridAdapter adapter, String scoreString) {
+        this.counter = counter;
+        this.lastPosition = lastposition;
+        this.pairsCounter = pairs;
+        this.score = score;
+        this.cards = cards;
+        this.adapter = adapter;
+        this.gridView.setAdapter(this.adapter);
+        this.scoreText.setText(scoreString);
 
-        cards = Utils.createCards();
-
-        adapter = new GridAdapter(getApplicationContext(),
-                R.id.scoreText,
-                cards,
-                this);
-        gridView.setAdapter(adapter);
-
-        String scoreString = String.format(getString(R.string.score_title),
-                String.valueOf(score));
-
-        scoreText.setText(scoreString);
     }
 
     @Override
@@ -121,7 +128,7 @@ public class MemorizeActivity extends AppCompatActivity implements CardSelectedL
                         @Override
                         public void onCancelPressed(DialogInterface dialog) {
                             dialog.dismiss();
-                            setGridData();
+                            mPresenter.setGridData();
                         }
 
                         @Override
@@ -131,11 +138,11 @@ public class MemorizeActivity extends AppCompatActivity implements CardSelectedL
                                 /**
                                  * Call to the ranking
                                  */
-                                /*Intent intent = new Intent(MemorizeActivity.this, RankingActivity.class);
+                                Intent intent = new Intent(MemorizeActivity.this, RankingActivity.class);
                                 intent.putExtra("name", name);
                                 intent.putExtra("score", score);
-                                setGridData();
-                                startActivity(intent);*/
+                                mPresenter.setGridData();
+                                startActivity(intent);
                             } else {
                                 Toast.makeText(getApplicationContext(),
                                         getString(R.string.dialog_down_text),
